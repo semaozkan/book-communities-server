@@ -6,12 +6,13 @@ import User from "../models/UserModel.js";
 // Create a new community
 export const createCommunity = async (req, res) => {
   try {
-    const { name, description } = req.body;
+    const { name, description, profileImage } = req.body;
     const admin = req.userId; // Kullanıcı kimliği artık req.userId
 
     const newCommunity = new CommunityModel({
       name,
       description,
+      profileImage,
       admin,
       members: [admin], // Admin is automatically a member
     });
@@ -48,6 +49,7 @@ export const getCommunity = async (req, res) => {
     const community = await CommunityModel.findById(req.params.id)
       .populate("admin", "username fullname profilePicture")
       .populate("members", "username fullname profilePicture")
+      .populate("pendingMembers", "username fullname profilePicture")
       .populate({
         path: "posts",
         options: { sort: { createdAt: -1 } },
@@ -196,6 +198,83 @@ export const acceptJoinRequest = async (req, res) => {
   }
 };
 
+// Reject join request by admin
+export const rejectJoinRequest = async (req, res) => {
+  try {
+    const { userId } = req.body;
+    const community = await CommunityModel.findById(req.params.id);
+
+    if (!community) {
+      return res.status(404).json({ message: "Community not found" });
+    }
+
+    // Check if user is admin
+    if (community.admin.toString() !== req.userId.toString()) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+
+    // Remove from pendingMembers
+    community.pendingMembers = community.pendingMembers.filter(
+      (id) => id.toString() !== userId
+    );
+    await community.save();
+
+    // Notification: User rejection notification
+    await CommunityNotificationModel.create({
+      community: community._id,
+      recipient: userId,
+      type: "JOIN_REJECTED",
+      content: "Topluluğa katılım isteğiniz reddedildi.",
+      relatedUser: community.admin,
+      isRead: false,
+    });
+
+    res.status(200).json({ message: "Join request rejected" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Admin removes a member from the community
+export const removeMember = async (req, res) => {
+  try {
+    const { userId } = req.body; // çıkarılacak üye
+    const community = await CommunityModel.findById(req.params.id);
+
+    if (!community) {
+      return res.status(404).json({ message: "Community not found" });
+    }
+
+    // Sadece admin işlem yapabilir
+    if (community.admin.toString() !== req.userId.toString()) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+
+    // Admin kendini çıkaramaz
+    if (userId === community.admin.toString()) {
+      return res
+        .status(400)
+        .json({ message: "Admin cannot remove themselves" });
+    }
+
+    // Üyelerden çıkar
+    const before = community.members.length;
+    community.members = community.members.filter(
+      (member) => member.toString() !== userId
+    );
+    if (community.members.length === before) {
+      return res.status(400).json({ message: "User is not a member" });
+    }
+    await community.save();
+
+    // Bildirim (opsiyonel): Kullanıcıya çıkarıldığına dair bildirim gönderilebilir
+
+    res.status(200).json({ message: "Member removed from community" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // Create post in community
 export const createPost = async (req, res) => {
   try {
@@ -221,6 +300,24 @@ export const createPost = async (req, res) => {
     await newPost.save();
     community.posts.push(newPost._id);
     await community.save();
+
+    // Bildirim: Tüm üyelere yeni gönderi bildirimi (yazan hariç)
+    const memberIds = community.members.filter(
+      (id) => id.toString() !== req.userId.toString()
+    );
+    await Promise.all(
+      memberIds.map((memberId) =>
+        CommunityNotificationModel.create({
+          community: community._id,
+          recipient: memberId,
+          type: "NEW_POST",
+          content: "Toplulukta yeni bir gönderi paylaşıldı.",
+          relatedUser: req.userId,
+          relatedPost: newPost._id,
+          isRead: false,
+        })
+      )
+    );
 
     res.status(201).json(newPost);
   } catch (error) {
@@ -346,6 +443,16 @@ export const leaveCommunity = async (req, res) => {
     );
 
     await community.save();
+
+    // Bildirim: Eğer admin tarafından çıkarıldıysa (opsiyonel)
+    // await CommunityNotificationModel.create({
+    //   community: community._id,
+    //   recipient: req.userId,
+    //   type: "ADMIN_ACTION",
+    //   content: "Bir topluluktan çıkarıldınız.",
+    //   relatedUser: community.admin,
+    //   isRead: false,
+    // });
     res.status(200).json({ message: "Left community successfully" });
   } catch (error) {
     res.status(500).json({ message: error.message });
