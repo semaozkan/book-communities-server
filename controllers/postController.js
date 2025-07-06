@@ -87,6 +87,18 @@ export const toggleLike = async (req, res) => {
     if (likeIndex === -1) {
       // Like the post
       post.likes.push(req.userId);
+      // Bildirim: Post sahibine beğeni bildirimi
+      if (post.author.toString() !== req.userId.toString()) {
+        await CommunityNotificationModel.create({
+          community: post.community,
+          recipient: post.author,
+          type: "POST_LIKE",
+          content: "Gönderin beğenildi.",
+          relatedUser: req.userId,
+          relatedPost: post._id,
+          isRead: false,
+        });
+      }
     } else {
       // Unlike the post
       post.likes.splice(likeIndex, 1);
