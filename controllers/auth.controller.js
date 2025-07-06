@@ -109,7 +109,7 @@ export const getProfile = async (req, res) => {
 // Kullanıcı profilini güncelle
 export const updateProfile = async (req, res) => {
   try {
-    const { fullname, bio, profilePicture } = req.body;
+    const { fullname, bio, profilePicture, coverImage } = req.body;
     const updatedUser = await User.findByIdAndUpdate(
       req.userId,
       {
@@ -117,6 +117,7 @@ export const updateProfile = async (req, res) => {
           fullname,
           bio,
           profilePicture,
+          coverImage,
         },
       },
       { new: true }
@@ -156,21 +157,41 @@ export const changePassword = async (req, res) => {
 export const toggleFavorite = async (req, res) => {
   try {
     const { bookId } = req.body;
-    const user = await User.findById(req.userId);
+    if (!bookId) {
+      return res.status(400).json({ message: "Eksik bookId!" });
+    }
 
-    const index = user.favorites.indexOf(bookId);
+    const user = await User.findById(req.userId);
+    if (!user) {
+      console.log("Kullanıcı bulunamadı!");
+      return res.status(404).json({ message: "Kullanıcı bulunamadı!" });
+    }
+
+    user.favorites = user.favorites.filter((fav) => fav !== null);
+
+    const index = user.favorites.findIndex(
+      (fav) => fav && fav.toString() === bookId
+    );
     if (index === -1) {
       user.favorites.push(bookId);
+      console.log("Kitap favorilere eklendi:", bookId);
     } else {
       user.favorites.splice(index, 1);
+      console.log("Kitap favorilerden çıkarıldı:", bookId);
     }
 
     await user.save();
+    await user.populate("favorites");
+    console.log("Favoriler güncellendi:", user.favorites);
+
     res.status(200).json(user.favorites);
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Favoriler güncellenirken bir hata oluştu!" });
+    console.error("Favoriler güncellenirken bir hata oluştu:", error);
+    res.status(500).json({
+      message: "Favoriler güncellenirken bir hata oluştu!",
+      error: error.message,
+      stack: error.stack,
+    });
   }
 };
 
@@ -193,23 +214,6 @@ export const getUserById = async (req, res) => {
     res
       .status(500)
       .json({ message: "Kullanıcı bilgileri alınırken bir hata oluştu!" });
-  }
-};
-
-// Kullanıcının yazdığı özetleri getir
-export const getUserSummaries = async (req, res) => {
-  try {
-    const user = await User.findById(req.params.id)
-      .select("summaries")
-      .populate("summaries");
-
-    if (!user) {
-      return res.status(404).json({ message: "Kullanıcı bulunamadı!" });
-    }
-
-    res.status(200).json(user.summaries);
-  } catch (error) {
-    res.status(500).json({ message: "Özetler alınırken bir hata oluştu!" });
   }
 };
 
