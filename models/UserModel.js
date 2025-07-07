@@ -22,7 +22,12 @@ const userSchema = new mongoose.Schema(
     },
     profilePicture: {
       type: String,
-      default: "",
+      default: "/images/default_user_image.png",
+    },
+    coverImage: {
+      type: String,
+      default:
+        "https://images.unsplash.com/photo-1597871509111-11db77ea3875?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8OHx8YmFja2dyb3VuZCUyMGltYWdlJTIwaG9yaXpvbnRhbHxlbnwwfHwwfHx8MA%3D%3D",
     },
     // Bağışçı olarak
     pendingDonations: [
@@ -67,6 +72,12 @@ const userSchema = new mongoose.Schema(
       default: "user",
     },
     favorites: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Book",
+      },
+    ],
+    listenedBooks: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Book",
