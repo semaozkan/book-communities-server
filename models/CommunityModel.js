@@ -86,6 +86,11 @@ const communitySchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    activeMeeting: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Meeting",
+      default: null,
+    },
   },
   {
     timestamps: true,
