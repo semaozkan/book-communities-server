@@ -24,6 +24,13 @@ const summarySchema = new mongoose.Schema({
   },
 });
 
+const ratingSchema = new mongoose.Schema({
+  user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  rating: { type: Number, min: 1, max: 5, required: true },
+  comment: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now },
+});
+
 const bookSchema = new mongoose.Schema(
   {
     title: {
@@ -69,7 +76,18 @@ const bookSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    audioBookUrl: {
+      type: String,
+      required: false,
+      default: null,
+    },
+    audioSyncJsonUrl: {
+      type: String,
+      required: false,
+      default: null,
+    },
     summaries: [summarySchema],
+    ratings: [ratingSchema],
   },
   {
     timestamps: true,
