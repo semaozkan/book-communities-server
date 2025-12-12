@@ -14,6 +14,8 @@ import {
   leaveCommunity,
   getCommunityStats,
   removeJoinRequest,
+  rejectJoinRequest,
+  removeMember,
 } from "../controllers/communityController.js";
 import { verifyToken } from "../middleware/auth.js";
 
@@ -35,6 +37,8 @@ router.post("/:id/join", verifyToken, requestJoinCommunity);
 router.post("/:id/accept", verifyToken, acceptJoinRequest);
 router.post("/:id/remove-request", verifyToken, removeJoinRequest);
 router.post("/:id/leave", verifyToken, leaveCommunity);
+router.post("/:id/reject-request", verifyToken, rejectJoinRequest);
+router.post("/:id/remove-member", verifyToken, removeMember); // Admin removes a member
 
 // Post routes
 router.post("/:id/posts", verifyToken, createPost);

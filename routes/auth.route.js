@@ -8,7 +8,6 @@ import {
   changePassword,
   toggleFavorite,
   getUserById,
-  getUserSummaries,
   getUserFavorites,
   getUserCommunities,
 } from "../controllers/auth.controller.js";
@@ -29,7 +28,6 @@ router.post("/favorites", verifyToken, toggleFavorite);
 
 // User detail routes
 router.get("/:id", getUserById);
-router.get("/:id/summaries", getUserSummaries);
 router.get("/:id/favorites", getUserFavorites);
 router.get("/:id/communities", getUserCommunities);
 
